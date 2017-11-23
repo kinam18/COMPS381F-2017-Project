@@ -1,0 +1,17 @@
+<html>
+<body>
+<h1>Restaurant</h1>
+<p>User:<%=username%></p>
+<p>Showing <%=doclen%> documents</p>
+<br>
+<a href="/new">
+<button class="createRes">Create New Restaurant</button>
+</a>
+<table>
+<tr><th>Name</th></tr>
+<% c.forEach(function(rest){%>
+<tr><td><a href=/details?_id=<%=rest._id%>><%=rest.name%></a></td></tr>
+<%});%>
+</table>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<HTML>
+<BODY>
+<head>
+  <title><%= rest.name %></title>
+</head>
+<img src="data:<%= rest.mimetype %>;base64, <%= rest.image %>" style="width:50%;height:auto">
+<br>
+<p>Borough: <%= rest.borough%></p>
+<p>Cuisine: <%= rest.cuisine %></p>
+<p>Building: <%= rest.building %></p>
+<p>Zipcode: <%= rest.zipcode %></p>
+<p>GPS: <%= lon %>,<%= lat %></p>
+<p>Rating:<ol>
+<p><a href="/gmap">Google Map</a></p>
+</BODY>
+</HTML>
