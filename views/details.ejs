@@ -9,8 +9,12 @@
 <p>Cuisine: <%= rest.cuisine %></p>
 <p>Building: <%= rest.building %></p>
 <p>Zipcode: <%= rest.zipcode %></p>
-<p>GPS: <%= lon %>,<%= lat %></p>
+<p>GPS: <%= rest.lon %>,<%= rest.lat %></p>
 <p>Rating:<ol>
-<p><a href="/gmap">Google Map</a></p>
+<p><a href="/map?lat=<%= rest.lat%>&lon=<%= rest.lon%>">Google Map</a></p>
+<p>Create by:<%=rest.createBy%></p>
+<button><a href="/rating?_id=<%=rest._id%>">Rating</a></button>
+<button><a href="/edit?_id=<%=rest._id%>">Edit</a></button>
+<button><a href="/delete?_id=<%=rest._id%>">Delete</a></button>
 </BODY>
 </HTML>

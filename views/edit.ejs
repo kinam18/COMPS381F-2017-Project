@@ -1,0 +1,54 @@
+<html>
+<body>
+<h1>Edit Restaurant</h1>
+<form action="/edit?_id=<%=rest._id%>" method="post" enctype="multipart/form-data">
+<p>
+<label>Name:</label>
+<input name="name" type="text" value="<%=rest.name%>" required>
+</p>
+<p>
+<label>Owner:</label>
+<input name="owner" type="text" value="<%=rest.owner%>" required>
+</p>
+<p>
+<label>Restaurant ID:</label>
+<input name="restaurant_id" type="text" value="<%=rest.restaurant_id%>">
+</p>
+<p>
+<label>Borough:</label>
+<input name="borough" type="text" value="<%=rest.borough%>">
+</p>
+<p>
+<label>Cuisine:</label>
+<input name="cuisine" value="<%=rest.cuisine%>" type="text">
+</p>
+<p>
+<label>Street:</label>
+<input name="street" value="<%=rest.street%>" type="text">
+</p>
+<p>
+<label>Building:</label>
+<input name="building" value="<%=rest.building%>" type="text">
+</p>
+<p>
+<label>Zipcode:</label>
+<input name="zipcode" value="<%=rest.zipcode%>" type="text">
+</p>
+<p>
+<label>GPS coordinates(lon.):</label>
+<input name="lon" type="text" value="<%=rest.lon%>" >
+</p>
+<p>
+<label>GPS cooridnates(lat.):</label>
+<input name="lat" type="text" value="<%=rest.lat%>" >
+</p>
+<p>
+<label>Photo:</label>
+<input name="photo" type="file" >
+</p>
+<p>
+<button>Edit</button>
+</p>
+</form>
+</body>
+</html>

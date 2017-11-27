@@ -73,6 +73,26 @@ app.get("/new", function(req,res) {
 			res.status(200).render("create_new_restaurant");
 });
 
+app.get('/edit', function(req,res) {
+	MongoClient.connect(mongourl, function(err,db) {
+    assert.equal(err,null);
+    console.log('Connected to MongoDB');
+    var criteria = {};
+    criteria['_id'] = ObjectID(req.query._id);
+    findPhoto(db,criteria,{},function(photo) {
+      db.close();
+      console.log('Disconnected MongoDB');
+      console.log('Photo returned = ' + photo.length);     
+      res.status(200);
+      res.render("edit",{rest:photo[0]});
+    });
+  });
+});
+
+app.post("/edit", function(req,res) {
+			update(req,res,req.body,ObjectID(req.query._id));
+});
+
 app.post("/create", function(req,res) {
 			create(req,res,req.body);
 });
@@ -86,34 +106,21 @@ app.get('/details', function(req,res) {
     findPhoto(db,criteria,{},function(photo) {
       db.close();
       console.log('Disconnected MongoDB');
-      console.log('Photo returned = ' + photo.length);
-      console.log('GPS = ' + JSON.stringify(photo[0].exif.gps));
-      var lat = -1;
-      var lon = -1;
-      if (photo[0].exif.gps && Object.keys(photo[0].exif.gps).length !== 0) {
-        var lat = gpsDecimal(
-          photo[0].exif.gps.GPSLatitudeRef,  // direction
-          photo[0].exif.gps.GPSLatitude[0],  // degrees
-          photo[0].exif.gps.GPSLatitude[1],  // minutes
-          photo[0].exif.gps.GPSLatitude[2]  // seconds
-        );
-        var lon = gpsDecimal(
-          photo[0].exif.gps.GPSLongitudeRef,
-          photo[0].exif.gps.GPSLongitude[0],
-          photo[0].exif.gps.GPSLongitude[1],
-          photo[0].exif.gps.GPSLongitude[2]
-        );
-      }
-      console.log(lat,lon);      
+      console.log('Photo returned = ' + photo.length);     
       res.status(200);
-      res.render("details",{rest:photo[0],lat:lat,lon:lon});
+      res.render("details",{rest:photo[0]});
     });
   });
 });
 
+app.get('/map', function(req,res) {
+  res.render('gmap.ejs',
+             {lat:req.query.lat,lon:req.query.lon});
+});
+
 function findRestaurants(db,criteria,callback) {
 	var restaurants = [];
-	cursor = db.collection('project').find(criteria); 		
+	cursor = db.collection('project').find(criteria,{name:1}); 		
 	cursor.each(function(err, doc) {
 		assert.equal(err, null); 
 		if (doc != null) {
@@ -173,42 +180,33 @@ function create(req,res,queryAsObject) {
 	var new_r = {};	// document to be inserted
 	if (queryAsObject.name) new_r['name'] = queryAsObject.name;
 	if (queryAsObject.owner) new_r['owner'] = queryAsObject.owner;
+	if (queryAsObject.restaurant_id) new_r['restaurant_id'] = queryAsObject.restaurant_id;
+	if (queryAsObject.borough) new_r['borough'] = queryAsObject.borough;
 	if (queryAsObject.cuisine) new_r['cuisine'] = queryAsObject.cuisine;
-	if (queryAsObject.cuisine) new_r['zipcode'] = queryAsObject.zipcode;
+	if (queryAsObject.zipcode) new_r['zipcode'] = queryAsObject.zipcode;
+	if (queryAsObject.lat) new_r['lat'] = queryAsObject.lat;
+	if (queryAsObject.lon) new_r['lon'] = queryAsObject.lon;
 	if (queryAsObject.building || queryAsObject.street) {
 		var address = {};
 		if (queryAsObject.building) address['building'] = queryAsObject.building;
 		if (queryAsObject.street) address['street'] = queryAsObject.street;
 		new_r['address'] = address;
 	}
+	new_r['createBy'] = req.session.username;
+	if(req.files.photo){
 	var filename = req.files.photo.name;
 	var mimetype = req.files.photo.mimetype;
-
-	 var exif = {};
   var image = {};
   image['image'] = filename;
-
-  try {
-    new ExifImage(req.files.photo.data, function(error, exifData) {
-      if (error) {
-        console.log('ExifImage: ' + error.message);
-      }
-      else {
-        exif['image'] = exifData.image;
-        exif['exif'] = exifData.exif;
-        exif['gps'] = exifData.gps;
-        console.log('Exif: ' + JSON.stringify(exif));
-      }
-    })
-	} catch (error) {}
-	
+	}
 	console.log('About to insert: ' + JSON.stringify(new_r));
 	MongoClient.connect(mongourl,function(err,db) {
 		assert.equal(err,null);
 		console.log('Connected to MongoDB\n');
+		if(req.files.photo){
 		new_r['mimetype']=mimetype;
 		new_r['image'] = req.files.photo.data.toString('base64');
-		new_r['exif'] = exif;
+		}
 		insertRestaurant(db,new_r,function(result) {
 			db.close();
 			console.log(JSON.stringify(result));
@@ -218,9 +216,44 @@ function create(req,res,queryAsObject) {
 	});
 }
 
-function gpsDecimal(direction,degrees,minutes,seconds) {
-  var d = degrees + minutes / 60 + seconds / (60 * 60);
-  return (direction === 'S' || direction === 'W') ? d *= -1 : d;
+function update(req,res,queryAsObject,targetID) {
+	var target = {_id:targetID};
+	var new_r = {};	// document to be inserted
+	if (queryAsObject.name) new_r['name'] = queryAsObject.name;
+	if (queryAsObject.owner) new_r['owner'] = queryAsObject.owner;
+	if (queryAsObject.restaurant_id) new_r['restaurant_id'] = queryAsObject.restaurant_id;
+	if (queryAsObject.borough) new_r['borough'] = queryAsObject.borough;
+	if (queryAsObject.cuisine) new_r['cuisine'] = queryAsObject.cuisine;
+	if (queryAsObject.zipcode) new_r['zipcode'] = queryAsObject.zipcode;
+	if (queryAsObject.lat) new_r['lat'] = queryAsObject.lat;
+	if (queryAsObject.lon) new_r['lon'] = queryAsObject.lon;
+	if (queryAsObject.building || queryAsObject.street) {
+		var address = {};
+		if (queryAsObject.building) address['building'] = queryAsObject.building;
+		if (queryAsObject.street) address['street'] = queryAsObject.street;
+		new_r['address'] = address;
+	}
+	new_r['createBy'] = req.session.username;
+	if(req.files.photo){
+	var filename = req.files.photo.name;
+	var mimetype = req.files.photo.mimetype;
+  var image = {};
+  image['image'] = filename;
+	}
+	console.log('About to insert: ' + JSON.stringify(new_r));
+	MongoClient.connect(mongourl,function(err,db) {
+		assert.equal(err,null);
+		console.log('Connected to MongoDB\n');
+		if(req.files.photo){
+		new_r['mimetype']=mimetype;
+		new_r['image'] = req.files.photo.data.toString('base64');}
+		updateRestaurant(db,target,new_r,function(result) {
+			db.close();
+			console.log(JSON.stringify(result));
+			res.writeHead(200, {"Content-Type": "text/plain"});
+			res.end("\nupdate was successful!");			
+		});
+	});
 }
 
 app.listen(process.env.PORT || 8099);
