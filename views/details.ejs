@@ -7,11 +7,12 @@
 <br>
 <p>Borough: <%= rest.borough%></p>
 <p>Cuisine: <%= rest.cuisine %></p>
-<p>Building: <%= rest.building %></p>
-<p>Zipcode: <%= rest.zipcode %></p>
-<p>GPS: <%= rest.lon %>,<%= rest.lat %></p>
-<p>Rating:<ol>
-<p><a href="/map?lat=<%= rest.lat%>&lon=<%= rest.lon%>">Google Map</a></p>
+<p>Street: <%= rest.address.street %></p>
+<p>Building: <%= rest.address.building %></p>
+<p>Zipcode: <%= rest.address.zipcode %></p>
+<p>GPS: <%= rest.address.lon %>,<%= rest.address.lat %></p>
+<p>Rating:<ol><% rest.grades.forEach(function(rating){%><li><%=rating.score%>(<%=rating.user%>)</li><%});%></ol>
+<p><a href="/map?lat=<%= rest.address.lat%>&lon=<%= rest.address.lon%>">Google Map</a></p>
 <p>Create by:<%=rest.createBy%></p>
 <button><a href="/rating?_id=<%=rest._id%>">Rating</a></button>
 <button><a href="/edit?_id=<%=rest._id%>">Edit</a></button>

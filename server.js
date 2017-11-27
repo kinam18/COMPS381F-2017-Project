@@ -89,9 +89,58 @@ app.get('/edit', function(req,res) {
   });
 });
 
+app.get('/rating', function(req,res) {
+	MongoClient.connect(mongourl, function(err,db) {
+    assert.equal(err,null);
+    console.log('Connected to MongoDB');
+    var criteria = {};
+    criteria['_id'] = ObjectID(req.query._id);
+    findPhoto(db,criteria,{},function(photo) {
+      db.close();
+      console.log('Disconnected MongoDB');
+			console.log('Photo returned = ' + photo.length);  
+			photo[0].grades.forEach(function(rate){
+				if(rate.user==req.session.username){
+					res.end('Rated before!!!!!!');
+				}
+			});
+      res.status(200);
+      res.render("rating",{rest:photo[0]});
+    });
+  });
+});
+
+app.get('/delete', function(req,res) {
+	MongoClient.connect(mongourl, function(err,db) {
+    assert.equal(err,null);
+    console.log('Connected to MongoDB');
+    var criteria = {};
+    criteria['_id'] = ObjectID(req.query._id);
+    findPhoto(db,criteria,{},function(photo) {
+      console.log('Disconnected MongoDB');
+			console.log('Photo returned = ' + photo.length);  
+			if(photo[0].createBy!=req.session.username){
+					res.end('you cannot delete!!!!!!');
+				}
+      deleteRestaurant(db,criteria,function(result) {
+			db.close();
+			console.log(JSON.stringify(result));
+			res.writeHead(200, {"Content-Type": "text/plain"});
+			res.end("delete was successful!");			
+		});
+	});
+	});
+});
+
 app.post("/edit", function(req,res) {
 			update(req,res,req.body,ObjectID(req.query._id));
 });
+
+app.post("/rating", function(req,res) {
+			ratingUpdate(req,res,req.body,ObjectID(req.query._id));
+});
+
+
 
 app.post("/create", function(req,res) {
 			create(req,res,req.body);
@@ -155,6 +204,14 @@ function updateRestaurant(db,criteria,newValues,callback) {
 			callback(result);
 	});
 }
+function updateRate(db,criteria,newValues,callback) {
+	db.collection('project').updateOne(
+		criteria,{$push:{grades:{$each:[newValues]}}},function(err,result) {
+			assert.equal(err,null);
+			console.log("update was successfully");
+			callback(result);
+	});
+}
 
 function findDistinctBorough(db,callback) {
 	db.collection('project').distinct("borough", function(err,result) {
@@ -183,17 +240,19 @@ function create(req,res,queryAsObject) {
 	if (queryAsObject.restaurant_id) new_r['restaurant_id'] = queryAsObject.restaurant_id;
 	if (queryAsObject.borough) new_r['borough'] = queryAsObject.borough;
 	if (queryAsObject.cuisine) new_r['cuisine'] = queryAsObject.cuisine;
-	if (queryAsObject.zipcode) new_r['zipcode'] = queryAsObject.zipcode;
-	if (queryAsObject.lat) new_r['lat'] = queryAsObject.lat;
-	if (queryAsObject.lon) new_r['lon'] = queryAsObject.lon;
-	if (queryAsObject.building || queryAsObject.street) {
-		var address = {};
+	var address = {};
+	if (queryAsObject.building || queryAsObject.street|| queryAsObject.zipcode|| queryAsObject.lat|| queryAsObject.lon) {
+		if (queryAsObject.zipcode) address['zipcode'] = queryAsObject.zipcode;
+		if (queryAsObject.lat) address['lat'] = queryAsObject.lat;
+	  if (queryAsObject.lon) address['lon'] = queryAsObject.lon;
 		if (queryAsObject.building) address['building'] = queryAsObject.building;
 		if (queryAsObject.street) address['street'] = queryAsObject.street;
-		new_r['address'] = address;
 	}
+	new_r['address'] = address;
+	new_r['grades']=[];
+
 	new_r['createBy'] = req.session.username;
-	if(req.files.photo){
+	if(req.files.photo){rating
 	var filename = req.files.photo.name;
 	var mimetype = req.files.photo.mimetype;
   var image = {};
@@ -233,6 +292,7 @@ function update(req,res,queryAsObject,targetID) {
 		if (queryAsObject.street) address['street'] = queryAsObject.street;
 		new_r['address'] = address;
 	}
+	
 	new_r['createBy'] = req.session.username;
 	if(req.files.photo){
 	var filename = req.files.photo.name;
@@ -248,6 +308,25 @@ function update(req,res,queryAsObject,targetID) {
 		new_r['mimetype']=mimetype;
 		new_r['image'] = req.files.photo.data.toString('base64');}
 		updateRestaurant(db,target,new_r,function(result) {
+			db.close();
+			console.log(JSON.stringify(result));
+			res.writeHead(200, {"Content-Type": "text/plain"});
+			res.end("\nupdate was successful!");			
+		});
+	});
+}
+
+function ratingUpdate(req,res,queryAsObject,targetID) {
+	var target = {_id:targetID};	// document to be inserted
+	if(queryAsObject.score){
+		var grades={};
+			grades['score'] = queryAsObject.score;
+			grades['user'] =  req.session.username;
+	}
+	MongoClient.connect(mongourl,function(err,db) {
+		assert.equal(err,null);
+		console.log('Connected to MongoDB\n');
+		updateRate(db,target,grades,function(result) {
 			db.close();
 			console.log(JSON.stringify(result));
 			res.writeHead(200, {"Content-Type": "text/plain"});
