@@ -45,6 +45,15 @@ app.post('/login',function(req,res) {
 	res.redirect('/');
 });
 
+app.get('/register',function(req,res) {
+		users.push({name:req.query.name,password:req.query.password});
+		for (var i=0; i<users.length; i++) {
+			req.session.authenticated = true;
+			req.session.username = users[i].name;
+		}
+	res.redirect('/');
+});
+
 app.get('/logout',function(req,res) {
 	req.session = null;
 	res.redirect('/');
@@ -61,10 +70,33 @@ app.get("/read", function(req,res) {
 	MongoClient.connect(mongourl, function(err, db) {
 		assert.equal(err,null);
 		console.log('Connected to MongoDB\n');
-		findRestaurants(db,{},function(restaurants) {
+		var criteria = {};
+		for (key in req.query) {
+				criteria[key] = req.query[key];
+			}
+		findRestaurants(db,criteria,function(restaurants) {
 			db.close();
 			console.log(req.session.username);
 			res.status(200).render("home", {c: restaurants,username:req.session.username,doclen:restaurants.length});
+		});
+	});
+});
+
+app.get("/api/restaurant/read", function(req,res) {
+	MongoClient.connect(mongourl, function(err, db) {
+		assert.equal(err,null);
+		console.log('Connected to MongoDB\n');
+		var criteria = {};
+		for (key in req.query) {
+				criteria[key] = req.query[key];
+			}
+		findRestaurants(db,criteria,function(restaurants) {
+			db.close();
+			console.log(req.session.username);
+			if(restaurants.length==0){
+				res.end('{}');
+			}
+			res.end(JSON.stringify(restaurants));
 		});
 	});
 });
@@ -80,8 +112,12 @@ app.get('/edit', function(req,res) {
     var criteria = {};
     criteria['_id'] = ObjectID(req.query._id);
     findPhoto(db,criteria,{},function(photo) {
-      db.close();
-      console.log('Disconnected MongoDB');
+			db.close();
+			console.log('Disconnected MongoDB');
+			if(photo[0].createBy!=req.session.username){
+					res.end('you cannot edit!!!!!!');
+					return;
+				}
       console.log('Photo returned = ' + photo.length);     
       res.status(200);
       res.render("edit",{rest:photo[0]});
@@ -115,13 +151,14 @@ app.get('/delete', function(req,res) {
     assert.equal(err,null);
     console.log('Connected to MongoDB');
     var criteria = {};
-    criteria['_id'] = ObjectID(req.query._id);
+		criteria['_id'] = ObjectID(req.query._id);
     findPhoto(db,criteria,{},function(photo) {
       console.log('Disconnected MongoDB');
-			console.log('Photo returned = ' + photo.length);  
+			console.log('Photo returned = ' + photo.length); 
 			if(photo[0].createBy!=req.session.username){
 					res.end('you cannot delete!!!!!!');
-				}
+					return;
+				} 
       deleteRestaurant(db,criteria,function(result) {
 			db.close();
 			console.log(JSON.stringify(result));
@@ -140,7 +177,9 @@ app.post("/rating", function(req,res) {
 			ratingUpdate(req,res,req.body,ObjectID(req.query._id));
 });
 
-
+app.post("/api/restaurant/create", function(req,res) {
+			create(req,res,req.body);
+});
 
 app.post("/create", function(req,res) {
 			create(req,res,req.body);
@@ -169,7 +208,7 @@ app.get('/map', function(req,res) {
 
 function findRestaurants(db,criteria,callback) {
 	var restaurants = [];
-	cursor = db.collection('project').find(criteria,{name:1}); 		
+	cursor = db.collection('project').find(criteria,{image:0}); 		
 	cursor.each(function(err, doc) {
 		assert.equal(err, null); 
 		if (doc != null) {
@@ -213,13 +252,6 @@ function updateRate(db,criteria,newValues,callback) {
 	});
 }
 
-function findDistinctBorough(db,callback) {
-	db.collection('project').distinct("borough", function(err,result) {
-		console.log(result);
-		callback(result);
-	});
-}
-
 function findPhoto(db,criteria,fields,callback) {
   var cursor = db.collection("project").find(criteria);
   var photos = [];
@@ -252,7 +284,7 @@ function create(req,res,queryAsObject) {
 	new_r['grades']=[];
 
 	new_r['createBy'] = req.session.username;
-	if(req.files.photo){rating
+	if(req.files.photo){
 	var filename = req.files.photo.name;
 	var mimetype = req.files.photo.mimetype;
   var image = {};
@@ -268,9 +300,11 @@ function create(req,res,queryAsObject) {
 		}
 		insertRestaurant(db,new_r,function(result) {
 			db.close();
-			console.log(JSON.stringify(result));
-			res.writeHead(200, {"Content-Type": "text/plain"});
-			res.end("\ninsert was successful!");			
+			console.log(JSON.stringify(result.ops[0]));
+			res.end(JSON.stringify({status:'ok','_id':result.ops[0]._id}));
+			if(result.ops[0]==null){
+				res.end(""+{status:'failed'});
+			}		
 		});
 	});
 }
@@ -283,15 +317,15 @@ function update(req,res,queryAsObject,targetID) {
 	if (queryAsObject.restaurant_id) new_r['restaurant_id'] = queryAsObject.restaurant_id;
 	if (queryAsObject.borough) new_r['borough'] = queryAsObject.borough;
 	if (queryAsObject.cuisine) new_r['cuisine'] = queryAsObject.cuisine;
-	if (queryAsObject.zipcode) new_r['zipcode'] = queryAsObject.zipcode;
-	if (queryAsObject.lat) new_r['lat'] = queryAsObject.lat;
-	if (queryAsObject.lon) new_r['lon'] = queryAsObject.lon;
-	if (queryAsObject.building || queryAsObject.street) {
-		var address = {};
+	var address = {};
+	if (queryAsObject.building || queryAsObject.street|| queryAsObject.zipcode|| queryAsObject.lat|| queryAsObject.lon) {
+		if (queryAsObject.zipcode) address['zipcode'] = queryAsObject.zipcode;
+		if (queryAsObject.lat) address['lat'] = queryAsObject.lat;
+	  if (queryAsObject.lon) address['lon'] = queryAsObject.lon;
 		if (queryAsObject.building) address['building'] = queryAsObject.building;
 		if (queryAsObject.street) address['street'] = queryAsObject.street;
-		new_r['address'] = address;
 	}
+	new_r['address'] = address;
 	
 	new_r['createBy'] = req.session.username;
 	if(req.files.photo){
