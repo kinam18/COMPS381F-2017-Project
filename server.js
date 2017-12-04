@@ -67,6 +67,9 @@ app.get('/',function(req,res) {
 });
 
 app.get("/read", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err, db) {
 		assert.equal(err,null);
 		console.log('Connected to MongoDB\n');
@@ -83,6 +86,9 @@ app.get("/read", function(req,res) {
 });
 
 app.get("/api/restaurant/read", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err, db) {
 		assert.equal(err,null);
 		console.log('Connected to MongoDB\n');
@@ -102,10 +108,16 @@ app.get("/api/restaurant/read", function(req,res) {
 });
 
 app.get("/new", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 			res.status(200).render("create_new_restaurant");
 });
 
 app.get('/edit', function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err,db) {
     assert.equal(err,null);
     console.log('Connected to MongoDB');
@@ -126,6 +138,9 @@ app.get('/edit', function(req,res) {
 });
 
 app.get('/rating', function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err,db) {
     assert.equal(err,null);
     console.log('Connected to MongoDB');
@@ -147,6 +162,9 @@ app.get('/rating', function(req,res) {
 });
 
 app.get('/delete', function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err,db) {
     assert.equal(err,null);
     console.log('Connected to MongoDB');
@@ -170,22 +188,37 @@ app.get('/delete', function(req,res) {
 });
 
 app.post("/edit", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 			update(req,res,req.body,ObjectID(req.query._id));
 });
 
 app.post("/rating", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 			ratingUpdate(req,res,req.body,ObjectID(req.query._id));
 });
 
 app.post("/api/restaurant/create", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 			create(req,res,req.body);
 });
 
 app.post("/create", function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 			create(req,res,req.body);
 });
 
 app.get('/details', function(req,res) {
+	if(!req.session.username){
+		res.redirect('/login');
+	}
 	MongoClient.connect(mongourl, function(err,db) {
     assert.equal(err,null);
     console.log('Connected to MongoDB');

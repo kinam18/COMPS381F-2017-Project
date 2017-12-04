@@ -3,7 +3,9 @@
 <head>
   <title><%= rest.name %></title>
 </head>
+<% if(rest.mimetype=='image/jpeg'||rest.mimetype=='image/png'){ %>
 <img src="data:<%= rest.mimetype %>;base64, <%= rest.image %>" style="width:50%;height:auto">
+<% };%>
 <br>
 <p>Borough: <%= rest.borough%></p>
 <p>Cuisine: <%= rest.cuisine %></p>
